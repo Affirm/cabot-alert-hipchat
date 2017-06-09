@@ -17,24 +17,33 @@ class HipchatAlert(AlertPlugin):
     name = "Hipchat"
     author = "Jonathan Balls"
 
-    def _send_hipchat_alert(self, message, failing_checks, color='green', sender='Cabot'):
+    def _send_hipchat_alert(self, message, service, color='green', sender='Cabot'):
         """
         Send an alert with the service status, then find the failing checks for a service
         and post their images to Hipchat
         :param message: the message to post
+        :param service: the Service we're alerting for
         :param color: the color the message will appear (red for error, green for back to normal)
         :param sender: who to send the message as
-        :param failing_checks: the StatusChecks that are failing
         :return: None
         """
-        # HIPCHAT_BASE_URL won't have any api information in it like the old "HIPCHAT_URL" does
-        url = env.get('HIPCHAT_BASE_URL')
-        if url is None:
+        if service.hipchat_instance is not None:
+            url = service.hipchat_instance.server_url
+            api_key = service.hipchat_instance.api_key
+        else:
+            # Backwards compatibility
             # HIPCHAT_URL has /api/v1 built in, but we need to use v2 for images
             url = env.get('HIPCHAT_URL').split('v1')[0]
-            url = urljoin(url, 'v2/room/{}/'.format(env.get('HIPCHAT_ALERT_ROOM')))
+            api_key = env.get('HIPCHAT_API_V2_KEY')
 
-        status_headers = image_headers = {'Authorization': 'Bearer {}'.format(env.get('HIPCHAT_API_V2_KEY'))}
+        if service.hipchat_room_id is not None:
+            hipchat_room = service.hipchat_room_id
+        else:
+            hipchat_room = env.get('HIPCHAT_ALERT_ROOM')
+
+        url = urljoin(url, 'v2/room/{}/'.format(hipchat_room))
+
+        status_headers = image_headers = {'Authorization': 'Bearer {}'.format(api_key)}
 
         # Send the status message
         status_url = urljoin(url, 'notification')
@@ -48,6 +57,7 @@ class HipchatAlert(AlertPlugin):
         }
         requests.post(status_url, headers=status_headers, data=json.dumps(data))
 
+        failing_checks = service.all_failing_checks()
         # Send the image messages
         if failing_checks == []:
             return
@@ -70,7 +80,6 @@ class HipchatAlert(AlertPlugin):
 
     def send_alert(self, service, users, duty_officers):
         alert = True
-        hipchat_aliases = []
         users = list(users) + list(duty_officers)
 
         hipchat_aliases = [u.hipchat_alias for u in HipchatAlertUserData.objects.filter(user__user__in=users)]
@@ -96,9 +105,12 @@ class HipchatAlert(AlertPlugin):
             'alert': alert,
             'jenkins_api': jenkins_api,
         })
+
         message = Template(hipchat_template).render(c)
-        failing_checks = service.all_failing_checks()
-        self._send_hipchat_alert(message, failing_checks, color=color, sender='Cabot/%s' % service.name)
+        self._send_hipchat_alert(message,
+                                 service,
+                                 color=color,
+                                 sender='Cabot/%s' % service.name)
 
 
 class HipchatAlertUserData(AlertPluginUserData):
