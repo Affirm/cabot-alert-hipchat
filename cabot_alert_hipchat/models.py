@@ -52,6 +52,7 @@ class HipchatAlert(AlertPlugin):
         message = Template(hipchat_template).render(c)
         self._send_hipchat_alert(
             message,
+            service.hipchat_room_id,
             color=color,
             sender='Cabot/%s' % service.name
         )
@@ -67,13 +68,15 @@ class HipchatAlert(AlertPlugin):
         message = Template(hipchat_update_template).render(c)
         self._send_hipchat_alert(
             message,
+            service.hipchat_room_id,
             color='yellow',
             sender='Cabot/%s' % service.name
         )
 
-    def _send_hipchat_alert(self, message, color='green', sender='Cabot'):
+    def _send_hipchat_alert(self, message, room, color='green', sender='Cabot'):
 
-        room = env.get('HIPCHAT_ALERT_ROOM')
+        if room is None:
+            room = env.get('HIPCHAT_ALERT_ROOM')
         api_key = env.get('HIPCHAT_API_KEY')
         domain = env.get('HIPCHAT_DOMAIN', 'api.hipchat.com')
 
