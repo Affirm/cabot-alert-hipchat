@@ -2,9 +2,9 @@ from django.db import models
 from cabot.cabotapp.alert import AlertPlugin, AlertPluginUserData
 
 from os import environ as env
+from urlparse import urljoin
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from django.template import Context, Template
 
 import requests
@@ -35,13 +35,14 @@ class HipchatAlert(AlertPlugin):
         else:
             color = 'red'
 
+        jenkins_api = urljoin(settings.JENKINS_API, '/')
         c = Context({
             'service': service,
             'users': hipchat_aliases,
             'host': settings.WWW_HTTP_HOST,
             'scheme': settings.WWW_SCHEME,
             'alert': alert,
-            'jenkins_api': settings.JENKINS_API,
+            'jenkins_api': jenkins_api,
         })
         message = Template(hipchat_template).render(c)
         self._send_hipchat_alert(message, color=color, sender='Cabot/%s' % service.name)
