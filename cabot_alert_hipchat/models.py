@@ -7,15 +7,9 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.template import Context, Template
 
-import logging
 import requests
-from urlparse import urlparse
-
-
-logger = logging.getLogger(__name__)
 
 hipchat_template = "Service {{ service.name }} {% if service.overall_status == service.PASSING_STATUS %}is back to normal{% else %}reporting {{ service.overall_status }} status{% endif %}: {{ scheme }}://{{ host }}{% url 'service' pk=service.id %}. {% if service.overall_status != service.PASSING_STATUS %}Checks failing: {% for check in service.all_failing_checks %}{% if check.check_category == 'Jenkins check' %}{% if check.last_result.error %} {{ check.name }} ({{ check.last_result.error|safe }}) {{jenkins_api}}job/{{ check.name }}/{{ check.last_result.job_number }}/console{% else %} {{ check.name }} {{jenkins_api}}/job/{{ check.name }}/{{check.last_result.job_number}}/console {% endif %}{% else %} {{ check.name }} {% if check.last_result.error %} ({{ check.last_result.error|safe }}){% endif %}{% endif %}{% endfor %}{% endif %}{% if alert %}{% for alias in users %} @{{ alias }}{% endfor %}{% endif %}"
-hipchat_update_template = '{{ service.unexpired_acknowledgement.user.email }} is working on service {{ service.name }} (status {{ service.overall_status }}) - acknowledged @ {{ service.unexpired_acknowledgement.time|date:"H:i" }}'
 
 # This provides the hipchat alias for each user. Each object corresponds to a User
 class HipchatAlert(AlertPlugin):
@@ -50,62 +44,22 @@ class HipchatAlert(AlertPlugin):
             'jenkins_api': settings.JENKINS_API,
         })
         message = Template(hipchat_template).render(c)
-        self._send_hipchat_alert(
-            message,
-            color=color,
-            sender='Cabot/%s' % service.name
-        )
-
-    def send_alert_update(self, service, users, duty_officers):
-
-        c = Context({
-            'service': service,
-            'host': settings.WWW_HTTP_HOST,
-            'scheme': settings.WWW_SCHEME,
-            'alert': False,
-        })
-        message = Template(hipchat_update_template).render(c)
-        self._send_hipchat_alert(
-            message,
-            color='yellow',
-            sender='Cabot/%s' % service.name
-        )
+        self._send_hipchat_alert(message, color=color, sender='Cabot/%s' % service.name)
 
     def _send_hipchat_alert(self, message, color='green', sender='Cabot'):
 
         room = env.get('HIPCHAT_ALERT_ROOM')
         api_key = env.get('HIPCHAT_API_KEY')
-        domain = env.get('HIPCHAT_DOMAIN', 'api.hipchat.com')
+        url = env.get('HIPCHAT_URL')
 
-        # Backwards compatibility
-        if env.get('HIPCHAT_URL'):
-            logger.warn('HIPCHAT_URL is deprecated. Please use HIPCHAT_DOMAIN instead with Hipchat API v2.')
-
-            if env.get('HIPCHAT_DOMAIN'):
-                logger.error('HIPCHAT_URL and HIPCHAT_DOMAIN cannot both be set.')
-                raise Exception('HIPCHAT_URL and HIPCHAT_DOMAIN cannot both be set, please remove HIPCHAT_URL from your config')
-            else:
-                resp = requests.post(env.get('HIPCHAT_URL') + '?auth_token=' + api_key, data={
-                    'room_id': room,
-                    'from': sender[:15],
-                    'message': message,
-                    'notify': 1,
-                    'color': color,
-                    'message_format': 'text',
-                })
-        else:
-            url = "https://{domain}/v2/room/{room}/notification?auth_token={api_key}".format(
-                domain=domain,
-                room=room,
-                api_key=api_key
-            )
-
-            resp = requests.post(url, data={
-                'message': message,
-                'notify': 'true',
-                'color': color,
-                'message_format': 'text',
-            })
+        resp = requests.post(url + '?auth_token=' + api_key, data={
+            'room_id': room,
+            'from': sender[:15],
+            'message': message,
+            'notify': 1,
+            'color': color,
+            'message_format': 'text',
+        })
 
 class HipchatAlertUserData(AlertPluginUserData):
     name = "Hipchat Plugin"

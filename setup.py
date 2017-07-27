@@ -2,14 +2,12 @@
 
 from setuptools import setup, find_packages
 
-VERSION = '2.0.2'
-
 setup(name='cabot-alert-hipchat',
-      version=VERSION,
-      description='A Hipchat alert plugin for Cabot by Arachnys',
+      version='1.6.1',
+      description='A hipchat alert plugin for Cabot by Arachnys',
       author='Arachnys',
       author_email='info@arachnys.com',
       url='http://cabotapp.com',
       packages=find_packages(),
-      download_url='https://github.com/cabotapp/cabot-alert-hipchat/archive/{}.zip'.format(VERSION),
+      download_url = 'https://github.com/bonniejools/cabot-alert-hipchat/tarball/1.6.1',
      )
