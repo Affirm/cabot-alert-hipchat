@@ -4,7 +4,6 @@ from urlparse import urljoin
 from cabot.cabotapp.alert import AlertPlugin, AlertPluginUserData
 
 from os import environ as env
-from urlparse import urljoin
 
 from django.conf import settings
 from django.template import Context, Template
