@@ -29,7 +29,7 @@ class HipchatAlert(AlertPlugin):
         """
         if service.hipchat_instance is not None:
             url = service.hipchat_instance.server_url
-            api_key = service.hipchat_instance.api_key
+            api_key = service.hipchat_instance.api_v2_key
         else:
             # Backwards compatibility
             # HIPCHAT_URL has /api/v1 built in, but we need to use v2 for images
